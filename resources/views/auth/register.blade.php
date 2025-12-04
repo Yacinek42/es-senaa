@@ -19,29 +19,23 @@
 
     <!-- 1. CHARGEMENT DES DONNÉES INITIALES (PHP) -->
     @php
+        // Initialisation des variables
         $niveaux = [];
         $wilayas = [];
+
         try {
+            // Chargement des Niveaux Scolaires
             if(class_exists('App\Models\NiveauScolaire')) {
                 $niveaux = \App\Models\NiveauScolaire::all();
             }
+            
+            // Chargement des Wilayas (triées par numéro)
             if(class_exists('App\Models\Wilaya')) {
-                // On récupère les wilayas triées par leur numéro (1-58)
                 $wilayas = \App\Models\Wilaya::orderBy('num')->get();
             }
         } catch(\Exception $e) {
-            // Silence en cas d'erreur de base de données
+            // En cas d'erreur (ex: migration non faite), les listes seront vides
         }
-        
-        // Liste de secours pour les Wilayas (identique à l'accueil)
-        $fallback_wilayas = [
-            'Adrar', 'Chlef', 'Laghouat', 'Oum-El-Bouaghi', 'Batna', 'Béjaïa', 'Biskra', 'Béchar', 'Blida', 'Bouira',
-            'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret', 'Tizi-Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saida',
-            'Skikda', 'Sidi-Bel-Abbès', 'Annaba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem', "M'Sila", 'Mascara', 
-            'Ouargla', 'Oran', 'El-Bayadh', 'Illizi', 'Bordj-Bou-Arreridj', 'Boumerdès', 'El-Tarf', 'Tindouf', 'Tissemsilt',
-            'El-Oued', 'Khenchela', 'Souk-Ahras', 'Tipaza', 'Mila', 'Aïn-Defla', 'Naâma', 'Aïn-Témouchent', 'Ghardaia', 'Relizane',
-            'Timimoun', 'Bordj Badji Mokhtar', 'Ouled Djellal', 'Béni Abbès', 'In Salah', 'In Guezzam', 'Touggourt', 'Djanet', 'El M\'Ghair', 'El Meniaa'
-        ];
     @endphp
 
     <!-- En-tête avec Logo -->
@@ -77,22 +71,42 @@
             // --- API: Charger Dairas/Communes Utilisateur ---
             fetchDairas(event) {
                 let wilayaId = event.target.value;
-                this.dairas = []; this.communes = []; // Reset
+                this.dairas = []; this.communes = []; // Reset des listes
+                
+                // Reset des selects dans le DOM
+                let dairaSelect = document.querySelector('select[name=\'daira_id\']');
+                let communeSelect = document.querySelector('select[name=\'commune_id\']');
+                if(dairaSelect) dairaSelect.value = '';
+                if(communeSelect) communeSelect.value = '';
+
                 if(wilayaId) {
-                    fetch(`/api/dairas/${wilayaId}`)
+                    fetch(`/get-dairas/${wilayaId}`)
                         .then(r => r.json())
-                        .then(data => this.dairas = data)
-                        .catch(e => console.error(e));
+                        .then(data => {
+                            this.dairas = data;
+                        })
+                        .catch(e => console.error('Erreur chargement Dairas:', e));
                 }
             },
             fetchCommunes(event) {
                 let dairaId = event.target.value;
-                this.communes = []; // Reset
+                this.communes = []; // Reset de la liste
+                let communeSelect = document.querySelector('select[name=\'commune_id\']');
+                if(communeSelect) communeSelect.value = '';
+
                 if(dairaId) {
-                    fetch(`/api/communes/${dairaId}`)
+                    fetch(`/get-communes/${dairaId}`)
                         .then(r => r.json())
-                        .then(data => this.communes = data)
-                        .catch(e => console.error(e));
+                        .then(data => {
+                            // FILTRE ANTI-DOUBLONS: On garde uniquement la première occurrence de chaque nom de commune
+                            const seen = new Set();
+                            this.communes = data.filter(item => {
+                                const duplicate = seen.has(item.commune); // 'commune' est le nom de la colonne dans la BDD
+                                seen.add(item.commune);
+                                return !duplicate;
+                            });
+                        })
+                        .catch(e => console.error('Erreur chargement Communes:', e));
                 }
             },
 
@@ -101,7 +115,7 @@
                 let wilayaId = event.target.value;
                 this.tuteurDairas = []; this.tuteurCommunes = [];
                 if(wilayaId) {
-                    fetch(`/api/dairas/${wilayaId}`)
+                    fetch(`/get-dairas/${wilayaId}`)
                         .then(r => r.json())
                         .then(data => this.tuteurDairas = data);
                 }
@@ -110,9 +124,17 @@
                 let dairaId = event.target.value;
                 this.tuteurCommunes = [];
                 if(dairaId) {
-                    fetch(`/api/communes/${dairaId}`)
+                    fetch(`/get-communes/${dairaId}`)
                         .then(r => r.json())
-                        .then(data => this.tuteurCommunes = data);
+                        .then(data => {
+                            // FILTRE ANTI-DOUBLONS pour le Tuteur aussi
+                            const seen = new Set();
+                            this.tuteurCommunes = data.filter(item => {
+                                const duplicate = seen.has(item.commune);
+                                seen.add(item.commune);
+                                return !duplicate;
+                            });
+                        });
                 }
             }
          }" 
@@ -185,7 +207,7 @@
 
                     <!-- CGU -->
                     <div class="flex items-start mt-4">
-                        <input id="cgu" type="checkbox" class="mt-1 w-4 h-4 border-gray-300 rounded text-yellow-400 focus:ring-yellow-400">
+                        <input id="cgu" type="checkbox" class="mt-1 w-4 h-4 border-gray-300 rounded text-yellow-400 focus:ring-yellow-400" required>
                         <label for="cgu" class="ml-2 text-xs text-gray-600">J'ai lu et j'accepte les CGU et la politique de protection des données.</label>
                     </div>
 
@@ -220,9 +242,9 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <input type="text" name="birth_place" placeholder="Lieu de naissance" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
                     <div class="flex gap-2">
-                        <select class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]"><option>Jours</option>@for($i=1;$i<=31;$i++)<option>{{$i}}</option>@endfor</select>
-                        <select class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]"><option>Mois</option>@foreach(['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'] as $m)<option>{{$m}}</option>@endforeach</select>
-                        <select class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]" x-model="birthYear"><option value="">Années</option>@for($i=2024;$i>=1950;$i--)<option>{{$i}}</option>@endfor</select>
+                        <select name="birth_day" class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]"><option value="">Jour</option>@for($i=1;$i<=31;$i++)<option value="{{$i}}">{{$i}}</option>@endfor</select>
+                        <select name="birth_month" class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]"><option value="">Mois</option>@foreach(['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'] as $k => $m)<option value="{{$k+1}}">{{$m}}</option>@endforeach</select>
+                        <select name="birth_year" class="block w-1/3 px-1 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]" x-model="birthYear"><option value="">Année</option>@for($i=2024;$i>=1950;$i--)<option value="{{$i}}">{{$i}}</option>@endfor</select>
                     </div>
                 </div>
 
@@ -245,7 +267,7 @@
                     </p>
                 </div>
 
-                <!-- ACCORDEON TUTEUR (DYNAMIQUE + FALLBACK) -->
+                <!-- ACCORDEON TUTEUR (DYNAMIQUE) -->
                 <div x-show="showTutor" x-transition class="border-t-2 border-[#FCD34D] pt-6 mt-4 mb-8">
                     <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">informations personnelles du tuteur légal</h2>
                     <div class="space-y-4">
@@ -254,29 +276,31 @@
                         
                         <div class="flex flex-wrap gap-2">
                             <!-- Wilaya Tuteur -->
-                            <select name="tuteur_wilaya" @change="fetchTuteurDairas($event)" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
+                            <select name="tuteur_wilaya_id" @change="fetchTuteurDairas($event)" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
                                 <option value="">Wilaya</option>
                                 @if(isset($wilayas) && count($wilayas) > 0)
                                     @foreach($wilayas as $wilaya)
                                         <option value="{{ $wilaya->id }}">{{ $wilaya->num }} - {{ $wilaya->wilaya }}</option>
                                     @endforeach
-                                @else
-                                    @foreach($fallback_wilayas as $index => $w_name)
-                                        <option value="{{ $index + 1 }}">{{ $index + 1 }} - {{ $w_name }}</option>
-                                    @endforeach
                                 @endif
                             </select>
                             
                             <!-- Daira Tuteur -->
-                            <select name="tuteur_daira" @change="fetchTuteurCommunes($event)" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
+                            <select name="tuteur_daira_id" @change="fetchTuteurCommunes($event)" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
                                 <option value="">Daira</option>
-                                <template x-for="d in tuteurDairas" :key="d.id"><option :value="d.id" x-text="d.daira"></option></template>
+                                <!-- CORRECTION: Ajout de l'index 'i' pour rendre la clé unique -->
+                                <template x-for="(d, i) in tuteurDairas" :key="d.id + '-' + i">
+                                    <option :value="d.id" x-text="d.daira"></option>
+                                </template>
                             </select>
                             
                             <!-- Commune Tuteur -->
-                            <select name="tuteur_commune" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
+                            <select name="tuteur_commune_id" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]">
                                 <option value="">Commune</option>
-                                <template x-for="c in tuteurCommunes" :key="c.id"><option :value="c.id" x-text="c.commune"></option></template>
+                                <!-- CORRECTION: Ajout de l'index 'i' -->
+                                <template x-for="(c, i) in tuteurCommunes" :key="c.id + '-' + i">
+                                    <option :value="c.id" x-text="c.commune"></option>
+                                </template>
                             </select>
                             
                             <select name="tuteur_codepostal" class="block flex-1 pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D]"><option>Code postal</option></select>
@@ -303,18 +327,13 @@
                 <h2 class="text-3xl font-extrabold text-gray-900 mb-12 mt-8">Votre niveau scolaire</h2>
 
                 <div class="mb-8">
-                    <!-- CONNEXION BDD NIVEAUX + FALLBACK -->
-                    <select name="niveau_scolaire" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent text-center">
+                    <!-- CONNEXION BDD NIVEAUX -->
+                    <select name="niveau_scolaire_id" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent text-center">
                         <option value="">Votre niveau scolaire</option>
                         @if(isset($niveaux) && count($niveaux) > 0)
                             @foreach($niveaux as $niveau)
                                 <option value="{{ $niveau->id }}">{{ $niveau->Nom }}</option>
                             @endforeach
-                        @else
-                            <option>4e Année Moyen</option>
-                            <option>1e Année Secondaire</option>
-                            <option>2e Année Secondaire</option>
-                            <option>3e Année Secondaire</option>
                         @endif
                     </select>
                 </div>
@@ -329,32 +348,30 @@
                 <h2 class="text-3xl font-extrabold text-gray-900 mb-12 mt-8">Choisissez Votre wilaya</h2>
 
                 <div class="space-y-4 mb-8">
-                    <!-- WILAYA (CONNEXION BDD + AJAX + FALLBACK) -->
-                    <select name="wilaya" @change="fetchDairas($event)" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
+                    <!-- WILAYA (CONNEXION BDD + AJAX) -->
+                    <select name="wilaya_id" @change="fetchDairas($event)" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
                         <option value="">Wilaya</option>
                         @if(isset($wilayas) && count($wilayas) > 0)
                             @foreach($wilayas as $wilaya)
                                 <option value="{{ $wilaya->id }}">{{ $wilaya->num }} - {{ $wilaya->wilaya }}</option>
                             @endforeach
-                        @else
-                            @foreach($fallback_wilayas as $index => $w_name)
-                                <option value="{{ $index + 1 }}">{{ $index + 1 }} - {{ $w_name }}</option>
-                            @endforeach
                         @endif
                     </select>
 
                     <!-- DAIRA (AJAX) -->
-                    <select name="daira" @change="fetchCommunes($event)" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
+                    <select name="daira_id" @change="fetchCommunes($event)" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
                         <option value="">Daira</option>
-                        <template x-for="d in dairas" :key="d.id">
+                        <!-- CORRECTION: Ajout de l'index 'i' pour rendre la clé unique -->
+                        <template x-for="(d, i) in dairas" :key="d.id + '-' + i">
                             <option :value="d.id" x-text="d.daira"></option>
                         </template>
                     </select>
 
                     <!-- COMMUNE (AJAX) -->
-                    <select name="commune" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
+                    <select name="commune_id" class="block w-full pl-4 pr-3 py-3 border border-[#FCD34D] rounded-lg bg-[#FFFCF5] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FCD34D] focus:border-transparent">
                         <option value="">Commune</option>
-                        <template x-for="c in communes" :key="c.id">
+                        <!-- CORRECTION: Ajout de l'index 'i' -->
+                        <template x-for="(c, i) in communes" :key="c.id + '-' + i">
                             <option :value="c.id" x-text="c.commune"></option>
                         </template>
                     </select>

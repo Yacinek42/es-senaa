@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB; // Important : On importe la façade DB
 use App\Models\Wilaya;
 use App\Models\Daira;
 use App\Models\Commune;
+use App\Models\NiveauScolaire;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,7 +20,12 @@ use App\Models\Commune;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    // Récupération des données dynamiques
+    // On utilise 'num' pour le tri (1..58)
+    $wilayas = Wilaya::orderBy('num')->get(); 
+    $niveaux = NiveauScolaire::all();
+
+    return view('welcome', compact('wilayas', 'niveaux'));
 });
 
 Route::get('/dashboard', function () {
@@ -39,12 +46,20 @@ require __DIR__.'/auth.php';
 |--------------------------------------------------------------------------
 */
 
+// Récupère les dairas directement via la table 'daira' (singulier)
 Route::get('/get-dairas/{wilaya_id}', function ($wilaya_id) {
-    // Récupère les daira liées à la wilaya choisie
-    return Daira::where('wilaya_id', $wilaya_id)->get();
+    // On force l'utilisation de la table 'daira' pour éviter les erreurs de modèle
+    return DB::table('daira')
+                ->where('wilaya_id', $wilaya_id)
+                ->orderBy('daira') // Tri par ordre alphabétique
+                ->get();
 });
 
+// Récupère les communes directement via la table 'commune' (singulier)
 Route::get('/get-communes/{daira_id}', function ($daira_id) {
-    // Récupère les communes liées à la daira choisie
-    return Commune::where('daira_id', $daira_id)->get();
+    // On force l'utilisation de la table 'commune'
+    return DB::table('commune')
+                  ->where('daira_id', $daira_id)
+                  ->orderBy('commune') // Tri par ordre alphabétique
+                  ->get();
 });

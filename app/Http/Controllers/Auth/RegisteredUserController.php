@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Wilaya; // Import du modèle Wilaya nécessaire
-use App\Providers\RouteServiceProvider;
+use App\Models\Wilaya; // Import du modèle Wilaya
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,11 +20,10 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        // On récupère toutes les wilayas pour les afficher dans le select
-        // Assurez-vous que le modèle Wilaya existe bien dans App\Models\Wilaya
-        $wilayas = Wilaya::all();
+        // Récupération des wilayas triées par numéro
+        $wilayas = Wilaya::orderBy('num')->get();
 
-        // On passe la variable $wilayas à la vue 'auth.register'
+        // On passe la variable $wilayas à la vue
         return view('auth.register', compact('wilayas'));
     }
 
@@ -38,19 +36,18 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            // Vous pouvez ajouter ici la validation pour wilaya_id, daira_id, etc.
-            // 'wilaya_id' => ['required', 'exists:wilayas,id'],
+            // Vous pouvez ajouter ici la validation pour wilaya_id, daira_id, commune_id si vous les stockez
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            // Si vous avez ajouté les colonnes dans votre migration users table, décommentez ceci :
+            // Ajoutez ici les champs de localisation si vous les sauvegardez dans la table users
             // 'wilaya_id' => $request->wilaya_id,
-            // 'daira_id' => $request->daira_id,
+            // 'daira_id' => $request->daira_id, 
             // 'commune_id' => $request->commune_id,
         ]);
 
@@ -58,6 +55,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(RouteServiceProvider::HOME);
+        return redirect(route('dashboard', absolute: false));
     }
 }

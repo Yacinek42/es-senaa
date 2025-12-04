@@ -85,7 +85,7 @@
                     
                     <div class="flex flex-col md:flex-row items-center gap-3 w-full max-w-4xl">
                         
-                        <!-- SELECT NIVEAU SCOLAIRE (Dynamique + Fallback) -->
+                        <!-- SELECT NIVEAU SCOLAIRE -->
                         <div class="relative w-full md:w-3/3">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-graduation-cap text-gray-500"></i></div>
                             <select class="block w-full pl-10 pr-8 py-3 bg-white border-none rounded shadow-sm text-gray-700 focus:ring-2 focus:ring-yellow-400 appearance-none">
@@ -95,11 +95,6 @@
                                         <option value="{{ $niveau->id }}">{{ $niveau->Nom }}</option>
                                     @endforeach
                                 @else
-                                    <!-- LISTE DE SECOURS (Si pas de BDD) -->
-                                    <option>Primaire</option>
-                                    <option>1e Année Moyen</option>
-                                    <option>2e Année Moyen</option>
-                                    <option>3e Année Moyen</option>
                                     <option>4e Année Moyen</option>
                                     <option>1e Année Secondaire</option>
                                     <option>2e Année Secondaire</option>
@@ -111,30 +106,18 @@
                             </div>
                         </div>
                         
-                        <!-- SELECT WILAYA (Dynamique + Fallback 58 Wilayas) -->
+                        <!-- SELECT WILAYA (DYNAMIQUE) -->
                         <div class="relative w-full md:w-2/3">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-location-dot text-gray-500"></i></div>
-                            <select class="block w-full pl-10 pr-8 py-3 bg-white border-none rounded shadow-sm text-gray-700 focus:ring-2 focus:ring-yellow-400 appearance-none">
+                            <select id="wilaya-select" class="block w-full pl-10 pr-8 py-3 bg-white border-none rounded shadow-sm text-gray-700 focus:ring-2 focus:ring-yellow-400 appearance-none">
                                 <option value="">Wilaya</option>
                                 @if(isset($wilayas) && count($wilayas) > 0)
                                     @foreach($wilayas as $wilaya)
+                                        {{-- Utilisation de 'num' et 'wilaya' correspondant à votre table BDD --}}
                                         <option value="{{ $wilaya->id }}">{{ $wilaya->num }} - {{ $wilaya->wilaya }}</option>
                                     @endforeach
                                 @else
-                                    <!-- LISTE DE SECOURS COMPLETE (Si pas de BDD) -->
-                                    @php
-                                        $fallback_wilayas = [
-                                            'Adrar', 'Chlef', 'Laghouat', 'Oum-El-Bouaghi', 'Batna', 'Béjaïa', 'Biskra', 'Béchar', 'Blida', 'Bouira',
-                                            'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret', 'Tizi-Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saida',
-                                            'Skikda', 'Sidi-Bel-Abbès', 'Annaba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem', "M'Sila", 'Mascara', 
-                                            'Ouargla', 'Oran', 'El-Bayadh', 'Illizi', 'Bordj-Bou-Arreridj', 'Boumerdès', 'El-Tarf', 'Tindouf', 'Tissemsilt',
-                                            'El-Oued', 'Khenchela', 'Souk-Ahras', 'Tipaza', 'Mila', 'Aïn-Defla', 'Naâma', 'Aïn-Témouchent', 'Ghardaia', 'Relizane',
-                                            'Timimoun', 'Bordj Badji Mokhtar', 'Ouled Djellal', 'Béni Abbès', 'In Salah', 'In Guezzam', 'Touggourt', 'Djanet', 'El M\'Ghair', 'El Meniaa'
-                                        ];
-                                    @endphp
-                                    @foreach($fallback_wilayas as $index => $w_name)
-                                        <option value="{{ $index + 1 }}">{{ $index + 1 }} - {{ $w_name }}</option>
-                                    @endforeach
+                                    <option value="">Données indisponibles</option>
                                 @endif
                             </select>
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -306,22 +289,29 @@
                 <h2 class="text-3xl md:text-4xl font-extrabold text-[#222] mb-12">Annonces par wilaya</h2>
                 
                 <div class="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto">
-                    @php
-                        // Liste statique pour les tags de bas de page (garantie d'affichage)
-                        $local_wilayas = [
-                            'Adrar', 'Chlef', 'Laghouat', 'Oum-El-Bouaghi', 'Batna', 'Béjaïa', 'Biskra', 'Béchar', 'Blida', 'Bouira',
-                            'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret', 'Tizi-Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saida',
-                            'Skikda', 'Sidi-Bel-Abbès', 'Annaba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem', "M'Sila", 'Mascara', 
-                            'Ouargla', 'Oran', 'El-Bayadh', 'Illizi', 'Bordj-Bou-Arreridj', 'Boumerdès', 'El-Tarf', 'Tindouf', 'Tissemsilt',
-                            'El-Oued', 'Khenchela', 'Souk-Ahras', 'Tipaza', 'Mila', 'Aïn-Defla', 'Naâma', 'Aïn-Témouchent', 'Ghardaia', 'Relizane'
-                        ];
-                    @endphp
-
-                    @foreach($local_wilayas as $w_name)
-                    <a href="#" class="bg-[#FCD34D] hover:bg-[#282825] hover:text-[#FCD34D] text-gray-900 px-4 py-2 rounded-lg font-medium text-base transition shadow-sm">
-                        {{ $w_name }} (1)
-                    </a>
-                    @endforeach
+                    {{-- Affichage dynamique des Wilayas en tags, sinon fallback --}}
+                    @if(isset($wilayas) && count($wilayas) > 0)
+                        @foreach($wilayas as $wilaya)
+                            <a href="#" class="bg-[#FCD34D] hover:bg-[#282825] hover:text-[#FCD34D] text-gray-900 px-4 py-2 rounded-lg font-medium text-base transition shadow-sm">
+                                {{ $wilaya->wilaya }}
+                            </a>
+                        @endforeach
+                    @else
+                        @php
+                            $local_wilayas = [
+                                'Adrar', 'Chlef', 'Laghouat', 'Oum-El-Bouaghi', 'Batna', 'Béjaïa', 'Biskra', 'Béchar', 'Blida', 'Bouira',
+                                'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret', 'Tizi-Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saida',
+                                'Skikda', 'Sidi-Bel-Abbès', 'Annaba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem', "M'Sila", 'Mascara', 
+                                'Ouargla', 'Oran', 'El-Bayadh', 'Illizi', 'Bordj-Bou-Arreridj', 'Boumerdès', 'El-Tarf', 'Tindouf', 'Tissemsilt',
+                                'El-Oued', 'Khenchela', 'Souk-Ahras', 'Tipaza', 'Mila', 'Aïn-Defla', 'Naâma', 'Aïn-Témouchent', 'Ghardaia', 'Relizane'
+                            ];
+                        @endphp
+                        @foreach($local_wilayas as $w_name)
+                        <a href="#" class="bg-[#FCD34D] hover:bg-[#282825] hover:text-[#FCD34D] text-gray-900 px-4 py-2 rounded-lg font-medium text-base transition shadow-sm">
+                            {{ $w_name }} (1)
+                        </a>
+                        @endforeach
+                    @endif
                 </div>
             </div>
             
@@ -390,7 +380,7 @@
             </div>
         </footer>
 
-        <!-- SCRIPT CAROUSEL -->
+        <!-- SCRIPT CAROUSEL & DAIRA -->
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const container = document.getElementById('carousel-container');
@@ -405,6 +395,19 @@
                     prevBtn.addEventListener('click', () => {
                         const cardWidth = container.firstElementChild.getBoundingClientRect().width;
                         container.scrollBy({ left: -(cardWidth + 24), behavior: 'smooth' });
+                    });
+                }
+
+                // Logique pour Dairas / Communes si vous décidez d'ajouter les selects plus tard
+                const wilayaSelect = document.getElementById('wilaya-select');
+                if (wilayaSelect) {
+                    wilayaSelect.addEventListener('change', function() {
+                        const wilayaId = this.value;
+                        console.log("Wilaya sélectionnée ID:", wilayaId);
+                        // Exemple d'appel AJAX futur :
+                        // fetch(`/get-dairas/${wilayaId}`)
+                        //    .then(response => response.json())
+                        //    .then(data => { ... remplir select daira ... });
                     });
                 }
             });

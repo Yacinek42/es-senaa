@@ -9,5 +9,9 @@ class Wilaya extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['code', 'nom'];
+    // Nom de la table exact
+    protected $table = 'wilaya';
+
+    // Les colonnes exactes de votre base de données (d'après votre image)
+    protected $fillable = ['num', 'wilaya', 'wilaya_ar'];
 }
